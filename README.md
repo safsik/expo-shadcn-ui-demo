@@ -1,97 +1,36 @@
-# Expo Router v3 shadcn-ui demo
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-This is a web-only guide for setting up [Tailwind CSS](https://tailwindcss.com/) and [Shadcn UI](https://ui.shadcn.com/) in an [Expo Router v3](https://docs.expo.dev/router/introduction/) project.
+## Getting Started
 
-## Setup Tailwind
+First, run the development server:
 
-Install dependencies:
-
-```
-yarn add tailwindcss postcss autoprefixer
-```
-
-Create a **tailwind.config.js** file:
-
-```js
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: ["./src/app/**/*.{ts,tsx}", "./src/components/**/*.{ts,tsx}"],
-  // Not required but I recommend disabling hover effects on touch devices.
-  future: {
-    hoverOnlyWhenSupported: true,
-  },
-};
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Add a **postcss.config.js** config file:
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```js
-module.exports = {
-  plugins: {
-    autoprefixer: {},
-    tailwindcss: {},
-  },
-};
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Create a global CSS file at **src/global.css**:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
+## Learn More
 
-Import the global CSS file in your root layout **src/app/\_layout.tsx**:
+To learn more about Next.js, take a look at the following resources:
 
-```tsx
-import "../global.css";
-```
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Setup Shadcn UI
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-Run the `shadcn-ui` init command to setup your project:
+## Deploy on Vercel
 
-```
-npx shadcn-ui@latest init
-```
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-You will be asked a few questions to configure `components.json`:
-
-```
-Would you like to use TypeScript (recommended)? no / yes
-Which style would you like to use? › Default
-Which color would you like to use as base color? › Slate
-Where is your global CSS file? › src/global.css
-Do you want to use CSS variables for colors? › no / yes
-Where is your tailwind.config.js located? › tailwind.config.js
-Configure the import alias for components: › ~/components
-Configure the import alias for utils: › ~/lib/utils
-Are you using React Server Components? › no
-```
-
-## Usage
-
-Now you can install and add components to your project:
-
-```
-npx shadcn-ui@latest add button
-```
-
-The command above will add the Button component to your project. You can then import it like this:
-
-```js
-import { Button } from "@/components/ui/button";
-
-export default function Home() {
-  return (
-    <div>
-      <Button>Click me</Button>
-    </div>
-  );
-}
-```
-
-> Reminder: Shadcn UI does not work on native, so you'll need to ensure you don't load any Shadcn UI components on native. You can use the `Platform` module to do this. Learn more: [Platform-specific modules](https://docs.expo.dev/router/advanced/platform-specific-modules/).
-
-- Example application with native https://github.com/EvanBacon/expo-router-better-web-drawers-example
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
