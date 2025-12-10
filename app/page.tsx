@@ -1,4 +1,4 @@
-import Dashboard from './pages/dashboard.tsx';
+import Dashboard from './pages/dashboard';
 
 export default function Page() {
   return (
