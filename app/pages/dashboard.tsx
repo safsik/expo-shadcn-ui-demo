@@ -52,7 +52,7 @@ function randInt({ min = 0, max} : { min?: number, max: number  }) : number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const featured: { url: any; }[] = []
+const featured: { id: string; title: string; url: string; thumb: string; src: string; thumbnail: string; }[] = []
 for (let i = 0; i < FEATURED_AMT; i++) {
     const ret = HLS_STREAMS[randInt({ max: HLS_STREAMS.length - 1})]
     const out = {
@@ -86,7 +86,7 @@ const containerVariants = {
     }
 };
 
-const itemVariants = {
+const itemVariants: any = {
     hidden: { opacity: 0, y: 30, scale: 0.9 },
     visible: { 
         opacity: 1, 
@@ -100,9 +100,9 @@ const itemVariants = {
 
 // --- App Views ---
 
-const StreamApp = ({ category, setCategory, onVideoSelect }) => {
+const StreamApp = ({ category, setCategory, onVideoSelect }: { category: string, setCategory: (category: string) => void, onVideoSelect: (video: any) => void }) => {
     
-    const handleVideoSelect = (video: any) => {
+    const handleVideoSelect = (video: { id: string; title: string; url: string; thumb: string; src: string; thumbnail: string; }) => {
         console.log('Video selected:', video);
         onVideoSelect(video);
     }
@@ -370,6 +370,7 @@ export default function AuroraApp() {
             <PhoenixPlayer 
                 selectedVideo={selectedVideo}
                 setSelectedVideo={setSelectedVideo}
+                onNext={() => {}}
                 onClose={() => setSelectedVideo(null)}
             />
         )}
