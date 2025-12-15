@@ -188,59 +188,63 @@ const PhoenixPlayer = ({ onClose, onNext, selectedVideo, setSelectedVideo }) => 
     );
 };
 
-const Playlist = ({ setSelectedVideo } : { setSelectedVideo: (video: any) => void }) => {
-
-    const [filtered, setFiltered] = useState(HLS_STREAMS);
+const Playlist = ({ setSelectedVideo }: { setSelectedVideo: (video: any) => void }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const searchRef = useRef<HTMLFormElement>(null);
+    const [filtered, setFiltered] = useState(HLS_STREAMS);
 
+    useEffect(() => {
+        if (searchTerm === '') {
+            setFiltered(HLS_STREAMS);
+        } else {
+            setFiltered(
+                HLS_STREAMS.filter(video =>
+                    video.title.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+            );
+        }
+    }, [searchTerm]);
 
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+    };
 
     const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, video: any) => {
         setSelectedVideo(video);
         e.preventDefault();
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setFiltered(HLS_STREAMS.filter(video => video.title.toLowerCase().includes(searchTerm.toLowerCase())));
-        searchRef.current?.reset();
-    }
-
-    const handleTyping = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        // e.preventDefault(); // Prevent default behavior if needed, but not for input change
-        setSearchTerm((e.target as HTMLInputElement).value);
-    }
-
-
     return (
         <div className="max-h-full overflow-hidden">
             <div className="max-height-5">
-                <form onSubmit={handleSubmit}>
-                    <input onKeyDown={handleTyping} className="w-full mb-3" />
-                </form>
+                <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="w-full mb-3 bg-white/10 text-white placeholder-white/50 rounded-lg p-2 border border-white/20 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
             </div>
 
             <div className="w-140 max-h-[78%] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/10 rounded-3xl p-4 hidden xl:block shadow-2xl">
                 <h4 className="text-white font-bold mb-4 flex items-center gap-2 sticky top-0 bg-black/0 backdrop-blur-xl pb-2 border-b border-white/5">
-                <List size={18} /> Next Up
+                    <List size={18} /> Next Up
                 </h4>
                 <div className="space-y-3">
-                {filtered.map((video, idx) => (
-                    <a key={idx} onClick={(e) => handleClick(e, video)} className="flex gap-3 items-center group cursor-pointer p-2 hover:bg-white/5 rounded-xl transition-colors">
-                        <div className={`w-16 h-10 rounded-lg shrink-0 relative overflow-hidden`}>
-                            <div className="absolute bottom-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-black" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-sm font-bold text-white truncate group-hover:text-orange-400 transition-colors">{video.title}</p>
-                            {/* <p className="text-xs text-zinc-500 truncate">{video.title}</p> */}
-                        </div>
-                    </a>
-                ))}
+                    {filtered.map((video, idx) => (
+                        <a key={idx} onClick={(e) => handleClick(e, video)} className="flex gap-3 items-center group cursor-pointer p-2 hover:bg-white/5 rounded-xl transition-colors">
+                            <div className={`w-16 h-10 rounded-lg shrink-0 relative overflow-hidden`}>
+                                <div className="absolute bottom-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-black" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-white truncate group-hover:text-orange-400 transition-colors">{video.title}</p>
+                                {/* <p className="text-xs text-zinc-500 truncate">{video.title}</p> */}
+                            </div>
+                        </a>
+                    ))}
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export { PhoenixPlayer, Playlist };
