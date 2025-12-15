@@ -2,455 +2,421 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Play, Flame, Heart, Search, Bell, Menu, TrendingUp, 
-  Layout, Zap, MessageSquare, Send, Bot, User, Sparkles, X, ChevronRight, LucideIcon,
-  Settings, BarChart3, Globe, Shield, Terminal
+  Play, 
+  Search, 
+  Menu, 
+  Bell, 
+  Flame, 
+  Compass, 
+  History, 
+  Clock, 
+  Gamepad2,
+  Music2,
+  MonitorPlay,
+  FolderOpen,
+  Mic2,
+  Trophy,
+  Users,
+  Settings,
+  Disc,
+  Headphones,
+  ArrowRight,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HLS_STREAMS } from '../data/videos';
+import { AlbumCard, GameCard, VideoCard } from '../components/card';
+import { PhoenixPlayer } from '../components/phoenix-player';
+import { Sidebar } from '../components/sidebar';
 
-// --- CONFIGURATION ---
-const AGENT_ID = "I8vLs74Re5v3bJDVm7-Mes9IPQYqhkA-";
+// --- Types ---
+// In a real app, these would be in a separate types file
+// type AppType = 'Stream' | 'Tunes' | 'Arcade' | 'Assets';
+// type Category = 'All' | 'Live' | 'Gaming' | 'Music' | 'Mixes';
 
-// --- TYPES ---
-interface Message {
-  id: string;
-  role: 'user' | 'agent';
-  content: string;
-  timestamp: Date;
+// --- Mock Data & HLS Streams ---
+const CATEGORIES = ['All'];
+const FEATURED_AMT = 10;
+
+// 'Live', 'Gaming', 'Music', 'Mixes', 'React', 'Tailwind', 'Design'
+
+// Real HLS Test Streams for Demo
+// const HLS_STREAMS = [
+//     { id: 'stream1', title: "Phoenix Live: Main Stage", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", thumb: "bg-gradient-to-br from-orange-600 to-red-900" },
+//     { id: 'stream2', title: "Sintel: The Journey", url: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8", thumb: "bg-gradient-to-bl from-red-600 via-orange-500 to-yellow-500" },
+//     { id: 'stream3', title: "Big Buck Bunny 4K", url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", thumb: "bg-gradient-to-tr from-slate-900 via-purple-900 to-slate-900" },
+// ];
+
+function randInt({ min = 0, max} : { min?: number, max: number  }) : number {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// --- ATOMS ---
-
-// 1. Magma Button
-interface MagmaButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children?: React.ReactNode;
-  icon?: LucideIcon | React.ElementType;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'icon' | 'sidebar';
-  active?: boolean;
-}
-
-const MagmaButton: React.FC<MagmaButtonProps> = ({ 
-  children, 
-  icon: Icon, 
-  variant = 'primary', 
-  active = false,
-  className = '', 
-  ...props 
-}) => {
-  const baseStyle = "relative group overflow-hidden font-bold transition-all duration-300 ease-out active:scale-95 flex items-center gap-3";
-  
-  const variants = {
-    primary: "rounded-full px-6 py-3 bg-[linear-gradient(135deg,#f97316_0%,#dc2626_100%)] text-white shadow-[0_0_20px_-5px_rgba(249,115,22,0.6)] hover:shadow-[0_0_30px_-5px_rgba(249,115,22,0.8)] justify-center",
-    secondary: "rounded-full px-6 py-3 bg-[#1f1f1f]/50 backdrop-blur-md border border-white/10 text-white hover:bg-[#1f1f1f] hover:border-orange-500/50 justify-center",
-    ghost: "rounded-full p-2 hover:bg-white/10 text-gray-400 hover:text-white justify-center",
-    icon: "rounded-full w-10 h-10 bg-[#1f1f1f] border border-white/10 text-white hover:border-orange-500 hover:text-orange-500 shadow-lg justify-center",
-    sidebar: `w-full rounded-xl px-4 py-3 text-sm transition-all ${active ? 'bg-gradient-to-r from-orange-500/20 to-red-500/10 text-white border-l-2 border-orange-500' : 'text-gray-400 hover:text-white hover:bg-white/5 border-l-2 border-transparent'}`
-  };
-
-  return (
-    <button className={`${baseStyle} ${variants[variant]} ${className}`} {...props}>
-      {variant === 'primary' && (
-        <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-10" />
-      )}
-      {Icon && <Icon size={variant === 'sidebar' ? 20 : (variant === 'icon' ? 20 : 18)} strokeWidth={active ? 2.5 : 2} className={active ? 'text-orange-500' : ''} />}
-      <span className="relative z-20">{children}</span>
-      <style>{`
-        @keyframes shimmer {
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
-    </button>
-  );
-};
-
-// 2. Glass Card
-interface GlassCardProps {
-  children: React.ReactNode;
-  className?: string;
-  noPadding?: boolean;
-}
-
-const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', noPadding = false }) => (
-  <div className={`relative rounded-3xl bg-[linear-gradient(145deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.01)_100%)] backdrop-blur-xl border border-white/5 shadow-xl overflow-hidden ${className} ${noPadding ? '' : 'p-6'}`}>
-    {children}
-  </div>
-);
-
-// --- CHAT COMPONENTS ---
-
-interface ChatMessageBubbleProps {
-  message: Message;
-}
-
-const ChatMessageBubble: React.FC<ChatMessageBubbleProps> = ({ message }) => {
-  const isAgent = message.role === 'agent';
-  
-  return (
-    <div className={`flex w-full mb-6 ${isAgent ? 'justify-start' : 'justify-end'}`}>
-      <div className={`flex max-w-[70%] gap-4 ${isAgent ? 'flex-row' : 'flex-row-reverse'}`}>
-        {/* Avatar */}
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ${isAgent ? 'bg-[#1f1f1f] border border-white/10' : 'bg-gradient-to-br from-orange-500 to-red-600'}`}>
-          {isAgent ? <Bot size={20} className="text-orange-500" /> : <User size={20} className="text-white" />}
-        </div>
-
-        {/* Bubble */}
-        <div className={`
-          relative p-5 rounded-3xl border backdrop-blur-md shadow-sm
-          ${isAgent 
-            ? 'bg-[#1f1f1f]/90 border-white/5 rounded-tl-sm text-gray-200' 
-            : 'bg-gradient-to-br from-orange-600/20 to-red-900/40 border-orange-500/20 rounded-tr-sm text-white'}
-        `}>
-          <p className="text-base leading-relaxed whitespace-pre-wrap">{message.content}</p>
-          <span className="text-[11px] opacity-40 mt-2 block text-right font-medium tracking-wide">
-            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ChatInterface: React.FC = () => {
-  const [input, setInput] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'agent',
-      content: "Phoenix Core Online.\n\nI have full access to your cluster topology. How can I assist with your infrastructure today?",
-      timestamp: new Date()
+const featured: { url: any; }[] = []
+for (let i = 0; i < FEATURED_AMT; i++) {
+    const ret = HLS_STREAMS[randInt({ max: HLS_STREAMS.length - 1})]
+    const out = {
+        ...ret,
+        src: ret.url,
+        thumbnail: 'https://picsum.photos/400/240?random'
     }
-  ]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+    featured.push(out)
+}
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+const GAMES = [
+  { id: 101, title: "Ember Knights", genre: "Roguelite", rating: "4.9", players: "12K Playing", thumbnail: "bg-gradient-to-b from-orange-900 to-black" },
+  { id: 102, title: "Neon Abyss", genre: "Platformer", rating: "4.7", players: "8K Playing", thumbnail: "bg-gradient-to-br from-purple-900 to-blue-900" },
+  { id: 103, title: "Cyber Drift", genre: "Racing", rating: "4.8", players: "15K Playing", thumbnail: "bg-gradient-to-tr from-cyan-900 to-blue-800" },
+  { id: 104, title: "Flame Core", genre: "FPS", rating: "4.5", players: "22K Playing", thumbnail: "bg-gradient-to-bl from-red-900 to-orange-800" },
+];
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+const ALBUMS = [
+  { id: 201, title: "Midnight Heat", artist: "The Blaze", tracks: 12, cover: "bg-gradient-to-tr from-orange-500 to-yellow-500" },
+  { id: 202, title: "Glass Heart", artist: "Prism", tracks: 8, cover: "bg-gradient-to-br from-blue-400 to-purple-500" },
+  { id: 203, title: "Red Shift", artist: "Doppler", tracks: 10, cover: "bg-gradient-to-b from-red-600 to-black" },
+  { id: 204, title: "Void Space", artist: "Null Pointer", tracks: 14, cover: "bg-zinc-800" },
+];
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
-    setIsLoading(true);
-
-    // Mock Response
-    setTimeout(() => {
-      const agentResponse = `Processing command: "${userMsg.content}"...\n\n[ACCESSING NODE CLUSTER...]\n\nI've analyzed the request against the current topology. In a production environment, I would now execute this against Agent ID: ${AGENT_ID.substring(0,8)}...`;
-      const agentMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'agent',
-        content: agentResponse,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, agentMsg]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-[#080505]">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-white/5 bg-[#080505]/50 backdrop-blur-sm sticky top-0 z-10">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="text-orange-500" size={20} />
-            Phoenix AI Agent
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">Connected to DigitalOcean GenAI Platform</p>
-        </div>
-        <div className="flex items-center gap-3">
-             <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-green-500 text-xs font-bold flex items-center gap-2">
-               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-               ONLINE
-             </div>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-hide">
-        <div className="max-w-3xl mx-auto">
-          {messages.map(msg => (
-            <ChatMessageBubble key={msg.id} message={msg} />
-          ))}
-          {isLoading && (
-            <div className="flex items-center gap-3 mb-4 px-2 opacity-70">
-              <div className="w-8 h-8 rounded-full bg-[#1f1f1f] border border-white/10 flex items-center justify-center">
-                 <Bot size={16} className="text-orange-500 animate-pulse" />
-              </div>
-              <span className="text-sm text-gray-400">Phoenix is processing...</span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Input */}
-      <div className="p-6 pb-8">
-        <div className="max-w-3xl mx-auto relative group">
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-red-600/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="relative flex items-center gap-4 bg-[#121212] rounded-2xl p-2 pl-6 border border-white/10 focus-within:border-orange-500/50 transition-all shadow-2xl">
-            <input 
-              type="text" 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask Phoenix to deploy droplets, check logs, or scale resources..."
-              className="flex-1 bg-transparent text-white text-base placeholder-gray-500 focus:outline-none py-3"
-            />
-            <button 
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              className="p-4 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white disabled:opacity-50 hover:shadow-[0_0_15px_rgba(249,115,22,0.4)] transition-shadow"
-            >
-              <Send size={20} fill="white" />
-            </button>
-          </div>
-          <div className="text-center mt-3 flex justify-center gap-6 text-[10px] text-gray-500 uppercase tracking-widest font-medium">
-             <span className="hover:text-gray-300 cursor-pointer transition-colors">cmd + k to clear</span>
-             <span className="hover:text-gray-300 cursor-pointer transition-colors">/deploy to start</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+// --- Animation Variants ---
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+        opacity: 1,
+        transition: { staggerChildren: 0.1 }
+    }
 };
 
-// --- DASHBOARD COMPONENTS ---
+const itemVariants = {
+    hidden: { opacity: 0, y: 30, scale: 0.9 },
+    visible: { 
+        opacity: 1, 
+        y: 0, 
+        scale: 1,
+        transition: { type: "spring", stiffness: 100, damping: 12 }
+    }
+};
 
-interface StatItem {
-  title: string;
-  val: string;
-  icon: LucideIcon;
-  trend?: string;
+
+
+// --- App Views ---
+
+const StreamApp = ({ category, setCategory, onVideoSelect }) => {
+    
+    const handleVideoSelect = (video: any) => {
+        console.log('Video selected:', video);
+        onVideoSelect(video);
+    }
+    
+    return (
+    <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-10"
+    >
+        {/* Navigation Pills */}
+        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide mask-fade-right sticky top-0 z-20 pt-2 -mt-2 bg-gradient-to-b from-[#050202] via-[#050202]/95 to-transparent px-2">
+            {CATEGORIES.map((cat) => (
+                <motion.button
+                    key={cat}
+                    onClick={() => setCategory(cat)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className={`px-6 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all border-2 shrink-0 ${
+                        category === cat 
+                        ? "bg-white text-black border-white shadow-[0_0_25px_rgba(255,255,255,0.3)]" 
+                        : "bg-[#1a1a1c] text-zinc-400 border-transparent hover:bg-[#27272a] hover:text-white hover:border-white/20"
+                    }`}
+                >
+                    {cat}
+                </motion.button>
+            ))}
+        </div>
+
+        {/* Hero Section */}
+        {category === 'All' && (
+             <motion.div 
+                variants={itemVariants}
+                className="w-full h-[450px] rounded-[48px] relative overflow-hidden group shadow-2xl shadow-orange-900/20 ring-1 ring-white/5 mx-auto transform transition-all"
+            >
+                <div className="absolute inset-0 bg-gradient-to-r from-red-950 via-orange-950 to-black z-0 scale-105 group-hover:scale-100 transition-transform duration-[2s]" />
+                <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+                
+                {/* Floating Elements */}
+                <motion.div 
+                    animate={{ y: [0, -20, 0], opacity: [0.5, 0.8, 0.5] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute top-20 right-20 w-64 h-64 bg-orange-500/20 rounded-full blur-[80px]" 
+                />
+
+                <div className="absolute inset-0 z-10 p-12 flex flex-col justify-end items-start bg-gradient-to-t from-black via-black/40 to-transparent">
+                    <motion.span 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-red-600/90 backdrop-blur-xl border border-red-400/30 text-white text-xs font-black tracking-widest px-4 py-2 rounded-full mb-6 flex items-center gap-2 shadow-lg shadow-red-900/50"
+                    >
+                        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                        LIVE EVENT
+                    </motion.span>
+                    <motion.h1 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-6xl md:text-7xl font-black mb-4 tracking-tight leading-[0.9]"
+                    >
+                        Phoenix <br /> 
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-200">Rises Again.</span>
+                    </motion.h1>
+                    <motion.p 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-zinc-200 max-w-lg mb-8 text-lg font-medium"
+                    >
+                        Join the 24/7 lo-fi coding stream. Experience the heat of development in real-time.
+                    </motion.p>
+                    <motion.button 
+                        onClick={() => onVideoSelect(featured[0])}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        whileHover={{ scale: 1.05, boxShadow: "0 0 40px rgba(255,255,255,0.4)" }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex items-center gap-3 bg-white text-black px-10 py-5 rounded-full font-black text-lg hover:bg-zinc-100 transition-colors group/btn"
+                    >
+                        <Play size={24} fill="black" /> 
+                        <span>Watch Stream</span>
+                        <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
+                    </motion.button>
+                </div>
+            </motion.div>
+        )}
+
+        <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {featured.map((video, index) => (
+                <VideoCard key={video.id || index} video={video} onClick={() => handleVideoSelect(video)} itemVariants={itemVariants} />
+            ))}
+        </motion.div>
+    </motion.div>
+);
 }
 
-interface NodeItem {
-  title: string;
-  status: string;
-  region: string;
-  type: string;
-}
-
-const DashboardView: React.FC = () => (
-  <div className="p-8 h-full overflow-y-auto scrollbar-hide">
-    {/* Header */}
-    <div className="flex items-end justify-between mb-8">
-      <div>
-        <h1 className="text-3xl font-black text-white mb-1">Mission Control</h1>
-        <p className="text-gray-400">Overview of your Magma Infrastructure</p>
-      </div>
-      <div className="flex gap-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-          <input 
-            type="text" 
-            placeholder="Search resources..." 
-            className="bg-[#1f1f1f] border border-white/10 rounded-full py-2 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-orange-500/50 w-64"
-          />
+const ArcadeApp = () => (
+    <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-10"
+    >
+        <div className="flex items-center justify-between">
+            <h2 className="text-4xl font-black text-white tracking-tight">Arcade <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Legends</span></h2>
+            <button className="bg-white/5 hover:bg-white/10 text-white px-6 py-2.5 rounded-full font-bold transition-colors">View All Games</button>
         </div>
-        <MagmaButton variant="icon" icon={Bell} />
-        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-white/10 overflow-hidden">
-             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Phoenix" alt="User" className="w-full h-full object-cover" />
-        </div>
-      </div>
-    </div>
-
-    {/* Top Grid: Hero + Quick Stats */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      {/* Hero */}
-      <GlassCard className="lg:col-span-2 min-h-[300px] flex flex-col justify-end relative group" noPadding>
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop')] bg-cover bg-center opacity-40 group-hover:opacity-50 transition-opacity duration-700 scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050202] via-[#050202]/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050202]/80 to-transparent" />
         
-        <div className="relative z-10 p-8 max-w-lg">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/30 mb-4 backdrop-blur-md">
-            <Flame size={12} className="text-orange-500 fill-orange-500" />
-            <span className="text-xs font-bold text-orange-400 tracking-wide uppercase">Magma UI v2.0</span>
-          </div>
-          
-          <h2 className="text-4xl font-black text-white leading-tight mb-4">
-            System Performance <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">Optimized</span>
-          </h2>
-          
-          <div className="flex gap-4 mt-2">
-            <MagmaButton variant="primary" icon={Zap}>Deploy Node</MagmaButton>
-            <MagmaButton variant="secondary" icon={Layout}>View Map</MagmaButton>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {GAMES.map(game => <GameCard key={game.id} game={game} />)}
         </div>
-      </GlassCard>
-
-      {/* Quick Stats Column */}
-      <div className="flex flex-col gap-4">
-        {[
-          { title: "Total CPU Load", val: "42%", icon: Zap, trend: "+2.4%" },
-          { title: "Memory Usage", val: "12.4 GB", icon: Layout, trend: "-0.5%" },
-          { title: "Network I/O", val: "840 MB/s", icon: Globe, trend: "+12%" },
-        ].map((item, i) => (
-          <GlassCard key={i} className="flex-1 flex items-center justify-between group hover:border-orange-500/30 transition-colors" noPadding>
-            <div className="flex items-center gap-4 p-5 w-full">
-              <div className="w-12 h-12 rounded-xl bg-[#1f1f1f] flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">
-                <item.icon size={20} className="text-gray-400 group-hover:text-orange-500 transition-colors" />
-              </div>
-              <div>
-                <div className="text-sm font-medium text-gray-400">{item.title}</div>
-                <div className="text-2xl font-bold text-white">{item.val}</div>
-              </div>
-              <div className={`ml-auto text-xs font-bold px-2 py-1 rounded-lg ${item.trend.startsWith('+') ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                {item.trend}
-              </div>
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-    </div>
-
-    {/* Active Nodes Grid */}
-    <div className="flex items-center justify-between mb-6">
-       <h3 className="text-xl font-bold text-white flex items-center gap-2">
-         <Shield size={20} className="text-orange-500"/>
-         Active Nodes
-       </h3>
-       <button className="text-sm text-gray-500 hover:text-white flex items-center gap-1">
-         View All <ChevronRight size={14} />
-       </button>
-    </div>
-
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pb-8">
-       {[
-         { title: "Production DB", status: "Healthy", region: "NYC3", type: "Database" },
-         { title: "AI Worker 01", status: "Processing", region: "SFO2", type: "Droplet" },
-         { title: "Load Balancer", status: "Stable", region: "LON1", type: "Network" },
-         { title: "Redis Cache", status: "Warming", region: "FRA1", type: "Cache" },
-       ].map((item: NodeItem, i: number) => (
-         <GlassCard key={i} className="group hover:border-orange-500/40 transition-all cursor-pointer" noPadding>
-           <div className="p-5">
-             <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-full bg-[#050202] border border-white/10 flex items-center justify-center group-hover:border-orange-500/50 transition-colors">
-                  <Flame size={16} className="text-orange-500" />
-                </div>
-                <div className="px-2 py-1 rounded bg-[#1f1f1f] border border-white/5 text-[10px] text-gray-400 uppercase font-bold">
-                  {item.region}
-                </div>
+        
+        <motion.div 
+            variants={itemVariants}
+            className="bg-gradient-to-r from-zinc-900 to-black rounded-[48px] p-10 border border-white/5 flex flex-col md:flex-row items-center gap-12 relative overflow-hidden group"
+        >
+             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20" />
+             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px] translate-x-1/3 -translate-y-1/3" />
+             
+             <div className="w-full md:w-1/2 relative z-10 space-y-6">
+                <span className="bg-blue-500/20 text-blue-300 font-bold px-4 py-2 rounded-full text-xs uppercase tracking-wider border border-blue-500/30">New Season</span>
+                <h3 className="text-4xl md:text-5xl font-black leading-tight">Pro Tournaments <br/><span className="text-blue-500">Winter Clash</span></h3>
+                <p className="text-zinc-400 text-lg font-medium">Compete in daily challenges, climb the leaderboard, and win exclusive animated skins.</p>
+                <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-full font-black text-lg shadow-lg shadow-blue-600/30 transition-all flex items-center gap-3"
+                >
+                    <Trophy size={20} /> Join Tournament
+                </motion.button>
              </div>
              
-             <h4 className="font-bold text-white mb-1 group-hover:text-orange-400 transition-colors">{item.title}</h4>
-             <p className="text-xs text-gray-500 mb-3">{item.type}</p>
-             
-             <div className="flex items-center gap-2">
-               <span className={`w-2 h-2 rounded-full ${item.status === 'Healthy' || item.status === 'Stable' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></span>
-               <span className="text-xs font-medium text-gray-300">{item.status}</span>
+             <div className="w-full md:w-1/2 flex justify-center z-10">
+                <motion.div 
+                    animate={{ rotate: [0, 10, 0, -10, 0], scale: [1, 1.05, 1] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                >
+                    <Gamepad2 size={200} className="text-blue-500 drop-shadow-[0_0_50px_rgba(59,130,246,0.5)]" />
+                </motion.div>
              </div>
-           </div>
-         </GlassCard>
-       ))}
-    </div>
-  </div>
+        </motion.div>
+    </motion.div>
 );
 
-// --- MAIN LAYOUT ---
+const TunesApp = () => (
+    <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex flex-col md:flex-row gap-8 h-[calc(100vh-140px)]"
+    >
+        <div className="flex-1 space-y-8 overflow-y-auto pr-2">
+            <header className="flex items-center justify-between">
+                <h2 className="text-4xl font-black text-white tracking-tight">Your <span className="text-orange-500">Mix</span></h2>
+                <div className="flex gap-2">
+                    <button className="p-3 bg-white/5 rounded-full hover:bg-white/10"><Settings size={20} /></button>
+                </div>
+            </header>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ALBUMS.map(album => <AlbumCard key={album.id} album={album} />)}
+                {ALBUMS.map(album => <AlbumCard key={`rep-${album.id}`} album={{...album, title: album.title + " (Remix)"}} />)}
+            </div>
+        </div>
 
-export default function PhoenixTabletApp() {
-  const [activeTab, setActiveTab] = useState<string>('Dashboard');
+        {/* Music Player Side Panel */}
+        <motion.div 
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.3, type: "spring" }}
+            className="w-full md:w-[380px] shrink-0 bg-[#121214]/80 backdrop-blur-xl border border-white/5 rounded-[40px] p-8 flex flex-col items-center text-center shadow-2xl relative overflow-hidden"
+        >
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-orange-500/10 to-transparent pointer-events-none" />
+            
+            <motion.div 
+                whileHover={{ scale: 1.05 }}
+                className="w-64 h-64 rounded-[32px] bg-gradient-to-br from-orange-500 to-red-600 mb-8 shadow-[0_20px_50px_rgba(234,88,12,0.3)] flex items-center justify-center relative z-10 group"
+            >
+                <Music2 size={80} className="text-white opacity-80" />
+                <div className="absolute inset-0 bg-black/10 rounded-[32px]" />
+                {/* Visualizer bars mock */}
+                <div className="absolute bottom-6 flex gap-1 items-end h-12">
+                    {[...Array(8)].map((_,i) => (
+                        <motion.div 
+                            key={i}
+                            animate={{ height: [10, 30, 15, 40, 20] }}
+                            transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, repeatType: "mirror" }}
+                            className="w-1.5 bg-white/80 rounded-full"
+                        />
+                    ))}
+                </div>
+            </motion.div>
+
+            <h3 className="text-2xl font-black text-white mb-2">Neon Nights</h3>
+            <p className="text-zinc-400 font-medium text-lg mb-8">Synthwave Collective</p>
+            
+            <div className="w-full space-y-4 mb-10">
+                <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden cursor-pointer group">
+                    <motion.div 
+                        layoutId="progBar" 
+                        className="bg-orange-500 h-full w-2/3 relative"
+                    >
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </motion.div>
+                </div>
+                <div className="flex justify-between text-xs text-zinc-500 font-bold font-mono">
+                    <span>2:14</span>
+                    <span>3:45</span>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between w-full px-4">
+                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="text-zinc-400 hover:text-white"><Disc size={24} /></motion.button>
+                 <div className="flex items-center gap-6">
+                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="text-white"><Play size={28} className="rotate-180 fill-white" /></motion.button>
+                     <motion.button 
+                        whileHover={{ scale: 1.1 }} 
+                        whileTap={{ scale: 0.95 }}
+                        className="w-20 h-20 rounded-[28px] bg-white text-black flex items-center justify-center shadow-xl shadow-white/10"
+                    >
+                        <Play size={32} fill="black" className="ml-1" />
+                     </motion.button>
+                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="text-white"><Play size={28} className="fill-white" /></motion.button>
+                 </div>
+                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="text-zinc-400 hover:text-white"><Mic2 size={24} /></motion.button>
+            </div>
+        </motion.div>
+    </motion.div>
+);
+
+// --- Main App Component ---
+
+export default function AuroraApp() {
+  const [currentApp, setCurrentApp] = useState('Stream');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState(null);
 
   return (
-    // Tablet Wrapper centered on screen
-    <div className="h-full bg-[#1a1a1a] flex items-center justify-center font-sans">
+    <div className="min-h-screen min-wscreen bg-[#050202] text-white font-sans selection:bg-orange-500/30 overflow-x-hidden">
       
-      {/* Tablet Frame Simulator */}
-      <div className="w-full h-full aspect-[4/3] bg-[#050202] border-[#2a2a2a] overflow-hidden relative shadow-2xl flex shadow-black/50">
+      {/* --- Ambient Background Glows --- */}
+      <motion.div 
+        animate={{ 
+            background: currentApp === 'Arcade' 
+                ? 'linear-gradient(to bottom, rgba(30,58,138,0.15), transparent)' 
+                : currentApp === 'Tunes' 
+                ? 'linear-gradient(to bottom, rgba(88,28,135,0.15), transparent)' 
+                : 'linear-gradient(to bottom, rgba(124,45,18,0.15), transparent)'
+        }}
+        className="fixed top-0 left-0 w-full h-[600px] pointer-events-none z-0 transition-colors duration-1000" 
+      />
+      
+      {/* Floating Blobs */}
+      <div className={`fixed -top-40 right-0 w-[800px] h-[800px] ${currentApp === 'Arcade' ? 'bg-blue-600/10' : 'bg-red-600/10'} rounded-full blur-[120px] pointer-events-none z-0 mix-blend-screen transition-colors duration-1000`} />
+      
+      {/* --- Video Player Overlay --- */}
+      <AnimatePresence>
+        {selectedVideo && (
+            <PhoenixPlayer 
+                selectedVideo={selectedVideo}
+                setSelectedVideo={setSelectedVideo}
+                onClose={() => setSelectedVideo(null)}
+            />
+        )}
+      </AnimatePresence>
+
+      
+
+      <div className="flex relative z-10">
         
-        {/* Ambient Backgrounds */}
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-orange-600 rounded-full filter blur-[150px] opacity-15 animate-pulse pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-red-700 rounded-full filter blur-[150px] opacity-15 pointer-events-none" />
+        <Sidebar setCurrentApp={setCurrentApp} currentApp={currentApp} isSidebarOpen={isSidebarOpen} />
 
-        {/* SIDEBAR NAVIGATION */}
-        <aside className="w-64 bg-[#080505]/80 backdrop-blur-xl border-r border-white/5 flex flex-col p-2 z-20">
-          
-          {/* Logo */}
-          <div className="flex items-center gap-3 mt-5 mb-10 px-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-              <Flame size={22} className="text-white fill-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white tracking-wide leading-none">PHOENIX</h1>
-              <span className="text-[10px] text-gray-500 font-medium tracking-widest uppercase">Console</span>
-            </div>
-          </div>
-
-          {/* Nav Items */}
-          <nav className="flex-1 space-y-2">
-            <p className="px-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-2">Main Menu</p>
-            <MagmaButton variant="sidebar" icon={Layout} active={activeTab === 'Dashboard'} onClick={() => setActiveTab('Dashboard')}>
-              Dashboard
-            </MagmaButton>
-            <MagmaButton variant="sidebar" icon={Sparkles} active={activeTab === 'Phoenix AI'} onClick={() => setActiveTab('Phoenix AI')}>
-              Phoenix AI
-            </MagmaButton>
-            <MagmaButton variant="sidebar" icon={BarChart3} active={activeTab === 'Analytics'} onClick={() => setActiveTab('Analytics')}>
-              Analytics
-            </MagmaButton>
-            <MagmaButton variant="sidebar" icon={Globe} active={activeTab === 'Network'} onClick={() => setActiveTab('Network')}>
-              Network Map
-            </MagmaButton>
-
-            <p className="px-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest mt-8 mb-2">System</p>
-            <MagmaButton variant="sidebar" icon={Terminal} onClick={() => {}}>
-              Logs
-            </MagmaButton>
-            <MagmaButton variant="sidebar" icon={Shield} onClick={() => {}}>
-              Security
-            </MagmaButton>
-            <MagmaButton variant="sidebar" icon={Settings} onClick={() => {}}>
-              Settings
-            </MagmaButton>
-          </nav>
-
-          {/* Bottom Card */}
-          <div className="mt-auto pt-6 border-t border-white/5">
-             <div className="bg-[#1f1f1f] rounded-xl p-4 border border-white/5">
-                <div className="flex items-center gap-3 mb-2">
-                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                   <span className="text-xs text-white font-bold">Cluster Healthy</span>
-                </div>
-                <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
-                   <div className="w-[75%] h-full bg-gradient-to-r from-orange-500 to-red-500"></div>
-                </div>
-                <div className="flex justify-between mt-2 text-[10px] text-gray-500">
-                   <span>CPU Usage</span>
-                   <span>75%</span>
-                </div>
-             </div>
-          </div>
-        </aside>
-
-        {/* MAIN CONTENT AREA */}
-        <main className="flex-1 flex flex-col relative overflow-hidden bg-[#080505]">
-          {activeTab === 'Dashboard' && <DashboardView />}
-          {activeTab === 'Phoenix AI' && <ChatInterface />}
-          
-          {(activeTab !== 'Dashboard' && activeTab !== 'Phoenix AI') && (
-            <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-50 space-y-4">
-               <div className="w-24 h-24 rounded-full bg-[#1f1f1f] flex items-center justify-center">
-                  <Layout size={48} className="text-gray-600" />
-               </div>
-               <p className="font-medium text-lg">Module under construction</p>
-            </div>
-          )}
+        {/* --- Main Content Area --- */}
+        <main className="flex-1 p-6 md:p-10 overflow-x-hidden w-full relative min-h-[calc(100vh-84px)]">
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={currentApp}
+                    initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, x: -20, filter: "blur(10px)" }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full h-full"
+                >
+                    {currentApp === 'Stream' && (
+                        <StreamApp 
+                            category={activeCategory} 
+                            setCategory={setActiveCategory} 
+                            onVideoSelect={setSelectedVideo}
+                        />
+                    )}
+                    {currentApp === 'Arcade' && <ArcadeApp />}
+                    {currentApp === 'Tunes' && <TunesApp />}
+                    {currentApp === 'Assets' && (
+                        <div className="flex flex-col items-center justify-center h-[60vh] text-zinc-500">
+                            <motion.div 
+                                animate={{ y: [0, -20, 0] }} 
+                                transition={{ repeat: Infinity, duration: 2 }}
+                            >
+                                <FolderOpen size={80} className="mb-6 opacity-30" />
+                            </motion.div>
+                            <h2 className="text-3xl font-black text-zinc-400 mb-2">Design Assets</h2>
+                            <p className="text-lg font-medium">Connect your cloud storage to view files.</p>
+                            <button className="mt-6 px-8 py-3 bg-zinc-800 rounded-full font-bold hover:bg-zinc-700 transition-colors">Connect Drive</button>
+                        </div>
+                    )}
+                </motion.div>
+            </AnimatePresence>
         </main>
-
       </div>
     </div>
   );
