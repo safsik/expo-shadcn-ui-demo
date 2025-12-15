@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "channels": "bun run ./scripts/generate-channel.ts"
   },
   "dependencies": {
     "@appwrite.io/pink-icons": "^1.0.0",
