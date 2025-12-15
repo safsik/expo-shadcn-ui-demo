@@ -1,6 +1,6 @@
 import { write } from "bun";
 
-const M3U_URL = "https://iptv-org.github.io/iptv/index.category.m3u";
+const M3U_URL = "https://iptv-org.github.io/iptv/index.language.m3u";
 const OUTPUT_FILE = "./app/data/videos.ts";
 
 // 1. Define the exact shape you requested

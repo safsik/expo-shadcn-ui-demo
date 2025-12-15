@@ -25,7 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { HLS_STREAMS } from '../data/videos';
 import { AlbumCard, GameCard, VideoCard } from '../components/card';
-import { PhoenixPlayer } from '../components/phoenix-player';
+import { PhoenixPlayer, Playlist } from '../components/phoenix-player';
 import { Sidebar } from '../components/sidebar';
 
 // --- Types ---
@@ -375,12 +375,15 @@ export default function AuroraApp() {
             />
         )}
       </AnimatePresence>
-
       
 
       <div className="flex relative z-10">
         
         <Sidebar setCurrentApp={setCurrentApp} currentApp={currentApp} isSidebarOpen={isSidebarOpen} />
+        
+        {/* <div className="top-0 end-0 h-screen z-[999] overflow-hidden">
+            <Playlist setSelectedVideo={setSelectedVideo} />
+        </div> */}
 
         {/* --- Main Content Area --- */}
         <main className="flex-1 p-6 md:p-10 overflow-x-hidden w-full relative min-h-[calc(100vh-84px)]">
