@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "channels": "bun run ./scripts/generate-channel.ts"
+    "channels": "bun run ./scripts/generate-channel.ts",
+    "server": "bun run ./server/index.ts"
   },
   "dependencies": {
     "@appwrite.io/pink-icons": "^1.0.0",
     "@radix-ui/react-slot": "^1.2.4",
+    "@reduxjs/toolkit": "^2.11.2",
     "@tailwindcss/postcss": "^4.1.11",
     "appwrite": "^18.1.1",
     "class-variance-authority": "^0.7.1",
@@ -23,6 +25,7 @@
     "react": "^19.1.2",
     "react-dom": "^19.1.2",
     "react-player": "^3.4.0",
+    "react-redux": "^9.2.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.11"
   },
